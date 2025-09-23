@@ -9,6 +9,7 @@ const lineRoutes = require('./routes/lineRoutes');
 const userRoutes = require('./routes/userRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const uploadQueueWorker = require('./workers/uploadQueueWorker');
+const corsProtection = require('./middleware/corsProtection');
 require('dotenv').config();
 
 const app = express();
@@ -28,12 +29,27 @@ const allowedOrigins = [
   'http://localhost:5173' // Vite default port
 ].filter(Boolean);
 
+// Add Vercel preview deployments pattern
+const isAllowedOrigin = (origin) => {
+  // Check exact matches
+  if (allowedOrigins.includes(origin)) return true;
+  
+  // Check Vercel preview URLs
+  if (origin && origin.includes('.vercel.app')) {
+    // Allow any subdomain of vercel.app for your project
+    const vercelPattern = /^https:\/\/(pixcel|pixcelbob)[\w-]*\.vercel\.app$/;
+    return vercelPattern.test(origin);
+  }
+  
+  return false;
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);
