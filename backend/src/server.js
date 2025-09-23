@@ -1,0 +1,87 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const pool = require('./config/database');
+const authRoutes = require('./routes/authRoutes');
+const lineRoutes = require('./routes/lineRoutes');
+const userRoutes = require('./routes/userRoutes');
+const statsRoutes = require('./routes/statsRoutes');
+const uploadQueueWorker = require('./workers/uploadQueueWorker');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(helmet());
+app.use(cors({
+  origin: [process.env.FRONTEND_URL, 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(session({
+  store: new pgSession({
+    pool: pool,
+    tableName: 'user_sessions'
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 1000 * 60 * 30 // 30 minutes
+  }
+}));
+
+app.use('/auth', authRoutes);
+app.use('/line', lineRoutes);
+app.use('/user', userRoutes);
+app.use('/stats', statsRoutes);
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  
+  // Start upload queue worker
+  uploadQueueWorker.start(30000); // Process queue every 30 seconds
+  console.log('Upload queue worker started');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  uploadQueueWorker.stop();
+  server.close(() => {
+    console.log('HTTP server closed');
+    pool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server');
+  uploadQueueWorker.stop();
+  server.close(() => {
+    console.log('HTTP server closed');
+    pool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  });
+});

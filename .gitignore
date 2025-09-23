@@ -1,0 +1,24 @@
+# Node
+node_modules/
+*.log
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.temp
+
+# Sensitive files
+*.pem
+*.key
+*.cert
