@@ -20,11 +20,29 @@ console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('Using database config:', process.env.DATABASE_URL ? 'DATABASE_URL' : 'Individual DB vars');
 
 app.use(helmet());
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://pixcelbob.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173' // Vite default port
+].filter(Boolean);
+
 app.use(cors({
-  origin: [process.env.FRONTEND_URL, 'http://localhost:3000'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-line-signature'],
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -73,8 +91,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+  
+  // Test database connection
+  try {
+    await pool.query('SELECT 1');
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    console.error('Make sure DATABASE_URL is set in Render environment variables');
+  }
   
   // Start upload queue worker
   uploadQueueWorker.start(30000); // Process queue every 30 seconds
