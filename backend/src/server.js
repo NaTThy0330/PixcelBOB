@@ -14,6 +14,11 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Database connection check
+console.log('Environment:', process.env.NODE_ENV);
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('Using database config:', process.env.DATABASE_URL ? 'DATABASE_URL' : 'Individual DB vars');
+
 app.use(helmet());
 app.use(cors({
   origin: [process.env.FRONTEND_URL, 'http://localhost:3000'],
@@ -44,8 +49,23 @@ app.use('/line', lineRoutes);
 app.use('/user', userRoutes);
 app.use('/stats', statsRoutes);
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date() });
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'OK',
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV,
+    database: 'checking...'
+  };
+
+  try {
+    await pool.query('SELECT 1');
+    health.database = 'connected';
+  } catch (error) {
+    health.database = 'disconnected';
+    health.error = error.message;
+  }
+
+  res.json(health);
 });
 
 app.use((err, req, res, next) => {

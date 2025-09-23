@@ -11,7 +11,8 @@ async function migrate() {
   try {
     console.log('Running database migrations...');
     
-    const schemaPath = path.join(__dirname, '../database/schema.sql');
+    const schemaFile = process.env.NODE_ENV === 'production' ? 'schema-render.sql' : 'schema.sql';
+    const schemaPath = path.join(__dirname, '../database', schemaFile);
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
     await pool.query(schema);
