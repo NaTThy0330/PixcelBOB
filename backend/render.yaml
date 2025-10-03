@@ -16,7 +16,7 @@ services:
           name: pixcelbob-db
           property: connectionString
       - key: FRONTEND_URL
-        value: https://pixcelbob.vercel.app
+        value: https://pixcel-bob.vercel.app
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
