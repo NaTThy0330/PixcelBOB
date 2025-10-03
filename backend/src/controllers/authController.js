@@ -58,10 +58,10 @@ const handleGoogleCallback = async (req, res) => {
     const user = result.rows[0];
 
     const jwtToken = jwt.sign(
-      { 
-        id: user.id, 
-        line_user_id: user.line_user_id, 
-        google_email: user.google_email 
+      {
+        id: user.id,
+        line_user_id: user.line_user_id,
+        google_email: user.google_email
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -71,6 +71,8 @@ const handleGoogleCallback = async (req, res) => {
 
     // Redirect back to frontend with token
     const redirectUrl = `${process.env.FRONTEND_URL}?token=${jwtToken}`;
+    console.log('Redirecting to frontend:', redirectUrl);
+    console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
     res.redirect(redirectUrl);
 
   } catch (error) {
