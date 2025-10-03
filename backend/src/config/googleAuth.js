@@ -17,12 +17,16 @@ const getAuthUrl = () => {
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent'
+    prompt: 'consent',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI
   });
 };
 
 const getTokens = async (code) => {
-  const { tokens } = await oauth2Client.getToken(code);
+  const { tokens } = await oauth2Client.getToken({
+    code: code,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+  });
   return tokens;
 };
 
