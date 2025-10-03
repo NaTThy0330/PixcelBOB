@@ -6,12 +6,14 @@ const jwt = require('jsonwebtoken');
 const initiateGoogleAuth = (req, res) => {
   try {
     const lineUserId = req.query.line_user_id || req.session.line_user_id;
-    
+
     if (lineUserId) {
       req.session.line_user_id = lineUserId;
     }
-    
+
     const authUrl = getAuthUrl();
+    console.log('Generated auth URL:', authUrl);
+    console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
     res.json({ authUrl });
   } catch (error) {
     console.error('Error initiating Google auth:', error);
@@ -21,10 +23,13 @@ const initiateGoogleAuth = (req, res) => {
 
 const handleGoogleCallback = async (req, res) => {
   try {
+    console.log('Callback received - Query params:', req.query);
+    console.log('Callback URL:', req.url);
     const { code } = req.query;
     const lineUserId = req.session.line_user_id;
 
     if (!code) {
+      console.error('No authorization code provided');
       return res.status(400).json({ error: 'Authorization code not provided' });
     }
 
