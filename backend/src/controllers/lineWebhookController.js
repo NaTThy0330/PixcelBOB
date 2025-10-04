@@ -3,6 +3,7 @@ const axios = require('axios');
 const pool = require('../config/database');
 const uploadProcessorService = require('../services/uploadProcessorService');
 const batchUploadService = require('../services/batchUploadService');
+const googleDriveService = require('../services/googleDriveService');
 
 const handleWebhook = async (req, res) => {
   try {
@@ -170,11 +171,18 @@ const handleImageMessage = async (event) => {
     try {
       const uploadResult = await uploadProcessorService.processUploadImmediately(lineUserId, messageId, imageBuffer);
 
+      // Get actual folder name from Google Drive
+      let folderName = null;
+      if (user.google_folder_id) {
+        folderName = await googleDriveService.getFolderName(user.google_folder_id, user.google_refresh_token);
+        console.log('📁 Folder name retrieved:', folderName);
+      }
+
       // Add to batch session and check if this is the first photo
       const isFirstPhoto = batchUploadService.addUploadToBatch(
         lineUserId,
         uploadResult,
-        user.google_folder_id ? 'Selected Folder' : null, // You can get folder name from DB if needed
+        folderName,
         user.google_folder_id
       );
 

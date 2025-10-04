@@ -18,6 +18,24 @@ class GoogleDriveService {
     }
   }
 
+  async getFolderName(folderId, refreshToken) {
+    try {
+      const credentials = await this.refreshAccessToken(refreshToken);
+      oauth2Client.setCredentials(credentials);
+      const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+      const response = await drive.files.get({
+        fileId: folderId,
+        fields: 'name'
+      });
+
+      return response.data.name;
+    } catch (error) {
+      console.error('Error getting folder name:', error);
+      return null;
+    }
+  }
+
   async uploadToDrive(imageBuffer, user, fileName = null) {
     try {
       console.log('🔄 Starting Google Drive upload process...', {
