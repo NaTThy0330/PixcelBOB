@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const { oauth2Client } = require('../config/googleAuth');
 const pool = require('../config/database');
+const { Readable } = require('stream');
 
 class GoogleDriveService {
   async refreshAccessToken(refreshToken) {
@@ -63,13 +64,16 @@ class GoogleDriveService {
         console.log('⚠️ No folder specified, uploading to My Drive root');
       }
 
+      // Convert Buffer to Stream (required by Google Drive API)
+      const bufferStream = Readable.from(imageBuffer);
+
       // Upload file
       console.log('⬆️ Calling Google Drive API files.create()...');
       const response = await drive.files.create({
         requestBody: fileMetadata,
         media: {
           mimeType: 'image/jpeg',
-          body: Buffer.from(imageBuffer)
+          body: bufferStream
         },
         fields: 'id, name, size, webViewLink, parents'
       });
