@@ -69,10 +69,19 @@ const handleGoogleCallback = async (req, res) => {
 
     req.session.destroy();
 
-    // Redirect back to frontend with token
-    const redirectUrl = `${process.env.FRONTEND_URL}?token=${jwtToken}`;
-    console.log('Redirecting to frontend:', redirectUrl);
+    // Redirect back to LIFF if available, otherwise to frontend
+    let redirectUrl;
+    if (process.env.LIFF_URL) {
+      // Redirect to LIFF URL - will open in LINE app
+      redirectUrl = `${process.env.LIFF_URL}?token=${jwtToken}`;
+    } else {
+      // Fallback to regular frontend URL
+      redirectUrl = `${process.env.FRONTEND_URL}?token=${jwtToken}`;
+    }
+
+    console.log('Redirecting to:', redirectUrl);
     console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
+    console.log('LIFF_URL env var:', process.env.LIFF_URL);
     res.redirect(redirectUrl);
 
   } catch (error) {
