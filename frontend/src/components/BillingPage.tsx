@@ -52,15 +52,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-8">
           <PixelCard>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="font-mono text-gray-800 mb-1">💰 Billing & Usage</h1>
                 <p className="text-sm text-gray-600 font-mono">Manage your credits and view usage history</p>
               </div>
-              <PixelButton 
+              <PixelButton
                 onClick={onBack}
                 variant="secondary"
-                className="font-mono"
+                className="font-mono w-full md:w-auto"
               >
                 ← Back to Dashboard
               </PixelButton>
