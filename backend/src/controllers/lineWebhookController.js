@@ -17,6 +17,8 @@ const handleWebhook = async (req, res) => {
       console.log('Processing event:', event.type, event.message?.type);
       if (event.type === 'message' && event.message.type === 'image') {
         await handleImageMessage(event);
+      } else if (event.type === 'message' && event.message.type === 'text') {
+        await handleTextMessage(event);
       }
     }
 
@@ -24,6 +26,53 @@ const handleWebhook = async (req, res) => {
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const handleTextMessage = async (event) => {
+  const lineUserId = event.source.userId;
+  const messageText = event.message.text.trim().toLowerCase();
+
+  try {
+    // Check for status/help commands
+    if (messageText === 'สถานะ' || messageText === 'status' || messageText === 'เช็คสถานะ') {
+      const userQuery = 'SELECT * FROM users WHERE line_user_id = $1';
+      const userResult = await pool.query(userQuery, [lineUserId]);
+
+      if (userResult.rows.length === 0) {
+        const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
+        await lineClient.replyMessage(event.replyToken, {
+          type: 'text',
+          text: `❌ ยังไม่ได้เชื่อมต่อระบบ\n\nกรุณาเชื่อมต่อบัญชี Google Drive:\n${authUrl}`
+        });
+        return;
+      }
+
+      const user = userResult.rows[0];
+      let status = '✅ สถานะการเชื่อมต่อ:\n\n';
+
+      if (user.google_refresh_token && user.google_folder_id) {
+        status += '✓ เชื่อมต่อ Google Drive แล้ว\n';
+        status += '✓ เลือกโฟลเดอร์แล้ว\n';
+        status += user.google_email ? `✓ อีเมล: ${user.google_email}\n` : '';
+        status += '\n📸 พร้อมรับรูปภาพแล้ว!\nส่งรูปมาได้เลยค่ะ';
+      } else if (user.google_refresh_token && !user.google_folder_id) {
+        const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
+        status = '⚠️ เชื่อมต่อ Google Drive แล้ว\nแต่ยังไม่ได้เลือกโฟลเดอร์\n\n';
+        status += `กรุณาเลือกโฟลเดอร์:\n${authUrl}`;
+      } else {
+        const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
+        status = '❌ ยังไม่ได้เชื่อมต่อ Google Drive\n\n';
+        status += `กรุณาเชื่อมต่อ:\n${authUrl}`;
+      }
+
+      await lineClient.replyMessage(event.replyToken, {
+        type: 'text',
+        text: status
+      });
+    }
+  } catch (error) {
+    console.error('Error handling text message:', error);
   }
 };
 
@@ -39,7 +88,7 @@ const handleImageMessage = async (event) => {
     const userResult = await pool.query(userQuery, [lineUserId]);
 
     if (userResult.rows.length === 0) {
-      // User not bound, send binding instructions with LINE user ID
+      // User not found in database
       const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
       await lineClient.replyMessage(event.replyToken, {
         type: 'text',
@@ -49,6 +98,27 @@ const handleImageMessage = async (event) => {
     }
 
     const user = userResult.rows[0];
+
+    // Check if user has completed Google Drive setup
+    if (!user.google_refresh_token) {
+      // User exists but hasn't connected Google account
+      const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
+      await lineClient.replyMessage(event.replyToken, {
+        type: 'text',
+        text: `คุณยังไม่ได้เชื่อมต่อบัญชี Google Drive\n\nกรุณาเข้าไปที่: ${authUrl}`
+      });
+      return;
+    }
+
+    if (!user.google_folder_id) {
+      // User has Google account but hasn't selected folder
+      const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
+      await lineClient.replyMessage(event.replyToken, {
+        type: 'text',
+        text: `คุณยังไม่ได้เลือกโฟลเดอร์สำหรับอัพโหลดรูป\n\nกรุณาเข้าไปที่: ${authUrl}`
+      });
+      return;
+    }
 
     // Check upload limit (10,000 photos)
     const countQuery = `
