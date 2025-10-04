@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import liff from '@line/liff';
 import { LandingPage } from './components/LandingPage';
 import { FolderSelection } from './components/FolderSelection';
 import { Dashboard } from './components/Dashboard';
@@ -13,6 +14,30 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lineUserId, setLineUserId] = useState<string | null>(null);
+
+  // Initialize LIFF
+  useEffect(() => {
+    const initLiff = async () => {
+      try {
+        const liffId = import.meta.env.VITE_LIFF_ID;
+        if (liffId) {
+          await liff.init({ liffId });
+          console.log('LIFF initialized');
+
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            console.log('LINE user:', profile);
+            setLineUserId(profile.userId);
+          }
+        }
+      } catch (error) {
+        console.error('LIFF initialization failed:', error);
+      }
+    };
+
+    initLiff();
+  }, []);
 
   // Apply pixel cursor to body element
   useEffect(() => {
@@ -101,11 +126,10 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     try {
-      // Check if LINE user ID is in URL params
-      const urlParams = new URLSearchParams(window.location.search);
-      const lineUserId = urlParams.get('line_user_id');
-      
-      const response = await apiService.getGoogleAuthUrl(lineUserId || undefined);
+      // Use LINE user ID from LIFF if available
+      const userId = lineUserId || new URLSearchParams(window.location.search).get('line_user_id');
+
+      const response = await apiService.getGoogleAuthUrl(userId || undefined);
       if (response.data?.authUrl) {
         window.location.href = response.data.authUrl;
       } else {
