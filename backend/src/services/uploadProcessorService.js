@@ -78,17 +78,9 @@ class UploadProcessorService {
   }
 
   async notifyUser(lineUserId, uploadResult) {
-    try {
-      const message = {
-        type: 'text',
-        text: `✅ อัพโหลดรูปภาพสำเร็จ!\nชื่อไฟล์: ${uploadResult.fileName}\nดูไฟล์: ${uploadResult.webViewLink}`
-      };
-
-      await lineClient.pushMessage(lineUserId, message);
-    } catch (error) {
-      console.error('Error notifying user:', error);
-      // Don't throw error for notification failures
-    }
+    // Notification disabled - using batch summary instead
+    // Individual upload notifications are now handled by batchUploadService
+    console.log('📸 Upload successful (notification via batch summary):', uploadResult.fileName);
   }
 
   async processUploadImmediately(lineUserId, messageId, imageBuffer) {
