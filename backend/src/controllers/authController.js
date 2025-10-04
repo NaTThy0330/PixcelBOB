@@ -7,12 +7,15 @@ const initiateGoogleAuth = (req, res) => {
   try {
     const lineUserId = req.query.line_user_id || req.session.line_user_id;
 
+    console.log('🔐 Initiating Google auth for LINE user:', lineUserId);
+
     if (lineUserId) {
       req.session.line_user_id = lineUserId;
     }
 
-    const authUrl = getAuthUrl();
-    console.log('Generated auth URL:', authUrl);
+    // Pass LINE user ID via state parameter (more reliable than sessions for external browser)
+    const authUrl = getAuthUrl(lineUserId);
+    console.log('Generated auth URL with LINE user ID in state');
     console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
     res.json({ authUrl });
   } catch (error) {
@@ -25,22 +28,34 @@ const handleGoogleCallback = async (req, res) => {
   try {
     console.log('Callback received - Query params:', req.query);
     console.log('Callback URL:', req.url);
-    console.log('Session data:', req.session);
-    const { code } = req.query;
-    const lineUserId = req.session.line_user_id;
-
-    console.log('LINE User ID from session:', lineUserId);
+    const { code, state } = req.query;
 
     if (!code) {
       console.error('No authorization code provided');
       return res.status(400).json({ error: 'Authorization code not provided' });
     }
 
+    // Try to get LINE user ID from state parameter (primary method)
+    let lineUserId = null;
+    if (state) {
+      try {
+        const stateData = JSON.parse(state);
+        lineUserId = stateData.line_user_id;
+        console.log('✅ LINE User ID from state parameter:', lineUserId);
+      } catch (e) {
+        console.error('Failed to parse state parameter:', e);
+      }
+    }
+
+    // Fallback to session if state doesn't have it
+    if (!lineUserId && req.session?.line_user_id) {
+      lineUserId = req.session.line_user_id;
+      console.log('⚠️ LINE User ID from session (fallback):', lineUserId);
+    }
+
     if (!lineUserId) {
-      console.error('⚠️ LINE User ID not found in session!');
-      console.error('This means the session was lost between /auth/google and callback');
-      // Try to redirect back with error
-      const redirectUrl = `${process.env.FRONTEND_URL}?error=session_lost&message=Please try connecting again`;
+      console.error('❌ LINE User ID not found in state or session!');
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=no_line_id&message=Please try connecting from LINE again`;
       return res.redirect(redirectUrl);
     }
 
