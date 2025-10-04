@@ -12,9 +12,16 @@ router.get('/webhook', (req, res) => {
 // LINE webhook with signature validation
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
+    console.log('=== LINE Webhook POST received ===');
+    console.log('Headers:', req.headers);
+    console.log('Body type:', typeof req.body, 'Is Buffer:', Buffer.isBuffer(req.body));
+
     const signature = req.get('x-line-signature');
     const body = req.body;
-    
+
+    console.log('Signature:', signature);
+    console.log('Channel Secret exists:', !!process.env.LINE_CHANNEL_SECRET);
+
     // Validate signature
     if (signature && Buffer.isBuffer(body)) {
       const channelSecret = process.env.LINE_CHANNEL_SECRET;
@@ -22,9 +29,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         .createHmac('SHA256', channelSecret)
         .update(body)
         .digest('base64');
-      
+
+      console.log('Computed hash:', hash);
+      console.log('Signature match:', signature === hash);
+
       if (signature !== hash) {
-        console.error('Invalid signature');
+        console.error('Invalid signature - computed:', hash, 'received:', signature);
         return res.status(403).json({ error: 'Invalid signature' });
       }
     }
