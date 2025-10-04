@@ -131,7 +131,24 @@ export default function App() {
 
       const response = await apiService.getGoogleAuthUrl(userId || undefined);
       if (response.data?.authUrl) {
-        window.location.href = response.data.authUrl;
+        // Check if running in LIFF (LINE app)
+        try {
+          if (liff.isInClient()) {
+            // Open Google OAuth in external browser to avoid disallowed_useragent error
+            console.log('Opening Google OAuth in external browser');
+            liff.openWindow({
+              url: response.data.authUrl,
+              external: true
+            });
+          } else {
+            // Normal browser - just redirect
+            window.location.href = response.data.authUrl;
+          }
+        } catch (liffError) {
+          // LIFF not initialized or not in LINE - use normal redirect
+          console.log('Not in LIFF context, using normal redirect');
+          window.location.href = response.data.authUrl;
+        }
       } else {
         console.error('Failed to get auth URL:', response.error);
         alert('Failed to initiate Google login. Please try again.');
