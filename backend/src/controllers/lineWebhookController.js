@@ -2,6 +2,7 @@ const { lineClient } = require('../config/lineConfig');
 const axios = require('axios');
 const pool = require('../config/database');
 const uploadProcessorService = require('../services/uploadProcessorService');
+const batchUploadService = require('../services/batchUploadService');
 
 const handleWebhook = async (req, res) => {
   try {
@@ -165,15 +166,31 @@ const handleImageMessage = async (event) => {
       sizeInKB: (imageBuffer.length / 1024).toFixed(2)
     });
 
-    // Reply to user immediately
-    await lineClient.replyMessage(event.replyToken, {
-      type: 'text',
-      text: 'ได้รับรูปภาพแล้ว กำลังอัพโหลดไปยัง Google Drive...'
-    });
-
-    // Process upload immediately (in production, you might want to use a queue)
+    // Process upload immediately
     try {
-      await uploadProcessorService.processUploadImmediately(lineUserId, messageId, imageBuffer);
+      const uploadResult = await uploadProcessorService.processUploadImmediately(lineUserId, messageId, imageBuffer);
+
+      // Add to batch session and check if this is the first photo
+      const isFirstPhoto = batchUploadService.addUploadToBatch(
+        lineUserId,
+        uploadResult,
+        user.google_folder_id ? 'Selected Folder' : null, // You can get folder name from DB if needed
+        user.google_folder_id
+      );
+
+      // Only reply for the first photo in a batch
+      if (isFirstPhoto) {
+        await lineClient.replyMessage(event.replyToken, {
+          type: 'text',
+          text: '📸 เริ่มรับรูปแล้ว! กำลังอัพโหลดไปยัง Google Drive...\n\n💡 ส่งรูปต่อได้เลย ระบบจะสรุปให้อีกครั้งหลังจากที่คุณส่งรูปเสร็จ (รอประมาณ 5 นาที)'
+        });
+      } else {
+        // For subsequent photos, just log - no message sent
+        const batchStatus = batchUploadService.getBatchStatus(lineUserId);
+        console.log(`📸 Photo ${batchStatus.photoCount} added to batch (silent upload)`);
+      }
+
+      console.log('✅ Upload completed successfully');
     } catch (uploadError) {
       console.error('❌ Upload failed:', {
         error: uploadError.message,
