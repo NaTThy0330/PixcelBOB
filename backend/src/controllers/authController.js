@@ -25,12 +25,23 @@ const handleGoogleCallback = async (req, res) => {
   try {
     console.log('Callback received - Query params:', req.query);
     console.log('Callback URL:', req.url);
+    console.log('Session data:', req.session);
     const { code } = req.query;
     const lineUserId = req.session.line_user_id;
+
+    console.log('LINE User ID from session:', lineUserId);
 
     if (!code) {
       console.error('No authorization code provided');
       return res.status(400).json({ error: 'Authorization code not provided' });
+    }
+
+    if (!lineUserId) {
+      console.error('⚠️ LINE User ID not found in session!');
+      console.error('This means the session was lost between /auth/google and callback');
+      // Try to redirect back with error
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=session_lost&message=Please try connecting again`;
+      return res.redirect(redirectUrl);
     }
 
     const tokens = await getTokens(code);
@@ -54,8 +65,20 @@ const handleGoogleCallback = async (req, res) => {
     `;
 
     const values = [lineUserId, googleEmail, googleRefreshToken];
+    console.log('💾 Saving to database:', {
+      lineUserId,
+      googleEmail,
+      hasRefreshToken: !!googleRefreshToken
+    });
+
     const result = await pool.query(query, values);
     const user = result.rows[0];
+
+    console.log('✅ User saved to database:', {
+      id: user.id,
+      line_user_id: user.line_user_id,
+      google_email: user.google_email
+    });
 
     const jwtToken = jwt.sign(
       {

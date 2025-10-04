@@ -84,11 +84,13 @@ const handleImageMessage = async (event) => {
 
   try {
     // Check if user is bound to a Google account
+    console.log('🔍 Checking user in database...', { lineUserId });
     const userQuery = 'SELECT * FROM users WHERE line_user_id = $1';
     const userResult = await pool.query(userQuery, [lineUserId]);
 
     if (userResult.rows.length === 0) {
       // User not found in database
+      console.log('❌ User not found in database');
       const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
       await lineClient.replyMessage(event.replyToken, {
         type: 'text',
@@ -98,10 +100,17 @@ const handleImageMessage = async (event) => {
     }
 
     const user = userResult.rows[0];
+    console.log('✅ User found:', {
+      userId: user.id,
+      email: user.google_email,
+      hasRefreshToken: !!user.google_refresh_token,
+      hasFolderId: !!user.google_folder_id
+    });
 
     // Check if user has completed Google Drive setup
     if (!user.google_refresh_token) {
       // User exists but hasn't connected Google account
+      console.log('❌ User missing Google refresh token');
       const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
       await lineClient.replyMessage(event.replyToken, {
         type: 'text',
@@ -112,6 +121,7 @@ const handleImageMessage = async (event) => {
 
     if (!user.google_folder_id) {
       // User has Google account but hasn't selected folder
+      console.log('❌ User missing Google folder ID');
       const authUrl = `${process.env.FRONTEND_URL}?line_user_id=${lineUserId}`;
       await lineClient.replyMessage(event.replyToken, {
         type: 'text',
@@ -119,6 +129,8 @@ const handleImageMessage = async (event) => {
       });
       return;
     }
+
+    console.log('✅ User validation passed, proceeding with upload');
 
     // Check upload limit (10,000 photos)
     const countQuery = `
