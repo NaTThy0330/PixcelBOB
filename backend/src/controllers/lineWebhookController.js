@@ -138,14 +138,20 @@ const handleImageMessage = async (event) => {
     }
 
     // Get image content from LINE
+    console.log('📥 Fetching image from LINE API...', { messageId });
     const imageStream = await lineClient.getMessageContent(messageId);
     const chunks = [];
-    
+
     for await (const chunk of imageStream) {
       chunks.push(chunk);
     }
-    
+
     const imageBuffer = Buffer.concat(chunks);
+    console.log('✅ Image retrieved from LINE:', {
+      messageId,
+      bufferSize: imageBuffer.length,
+      sizeInKB: (imageBuffer.length / 1024).toFixed(2)
+    });
 
     // Reply to user immediately
     await lineClient.replyMessage(event.replyToken, {
@@ -157,14 +163,36 @@ const handleImageMessage = async (event) => {
     try {
       await uploadProcessorService.processUploadImmediately(lineUserId, messageId, imageBuffer);
     } catch (uploadError) {
-      console.error('Upload failed:', uploadError);
-      
+      console.error('❌ Upload failed:', {
+        error: uploadError.message,
+        lineUserId,
+        messageId
+      });
+
+      // Send specific error message to user
+      let errorMessage = '❌ เกิดข้อผิดพลาดในการอัพโหลด\n\n';
+
+      if (uploadError.message.includes('invalid_grant') || uploadError.message.includes('Token')) {
+        errorMessage += 'ปัญหา: Google Drive token หมดอายุ\nแก้ไข: กรุณาเชื่อมต่อ Google Drive ใหม่';
+      } else if (uploadError.message.includes('File not found') || uploadError.message.includes('folder')) {
+        errorMessage += 'ปัญหา: ไม่พบโฟลเดอร์ที่เลือก\nแก้ไข: กรุณาเลือกโฟลเดอร์ใหม่';
+      } else if (uploadError.message.includes('Insufficient Permission') || uploadError.message.includes('permission')) {
+        errorMessage += 'ปัญหา: ไม่มีสิทธิ์เข้าถึง Google Drive\nแก้ไข: กรุณาให้สิทธิ์ใหม่';
+      } else {
+        errorMessage += `ปัญหา: ${uploadError.message}\n\nรูปของคุณจะถูกเก็บไว้และลองอัพโหลดใหม่ภายหลัง`;
+      }
+
+      await lineClient.pushMessage(lineUserId, {
+        type: 'text',
+        text: errorMessage
+      });
+
       // Store for later retry
       const insertQuery = `
         INSERT INTO pending_uploads (line_user_id, message_id, image_data, created_at)
         VALUES ($1, $2, $3, NOW())
       `;
-      
+
       await pool.query(insertQuery, [lineUserId, messageId, imageBuffer]);
     }
 
