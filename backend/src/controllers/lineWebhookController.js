@@ -134,22 +134,42 @@ const handleImageMessage = async (event) => {
 
     console.log('✅ User validation passed, proceeding with upload');
 
-    // Check upload limit (10,000 photos)
-    const countQuery = `
-      SELECT COUNT(*) as upload_count 
-      FROM upload_history 
-      WHERE user_id = $1 AND upload_status = 'success'
-    `;
-    const countResult = await pool.query(countQuery, [user.id]);
-    const uploadCount = parseInt(countResult.rows[0].upload_count);
+    // --- Replace your old upload limit check block with this ---
+const countQuery = `
+  SELECT COUNT(*) AS upload_count
+  FROM upload_history
+  WHERE user_id = $1 AND upload_status = 'success'
+`;
+const countResult = await pool.query(countQuery, [user.id]);
+const uploadCount = parseInt(countResult.rows[0].upload_count, 10);
+
+// ดึง upload_limit ของ package ล่าสุดของ user
+const packageQuery = `
+  SELECT p.upload_limit
+  FROM user_packages up
+  JOIN packages p ON up.package_id = p.id
+  WHERE up.user_id = $1
+  ORDER BY up.start_date DESC
+  LIMIT 1
+`;
+const packageResult = await pool.query(packageQuery, [user.id]);
+
+// ใช้ค่า upload_limit จาก package ถ้ามี ไม่งั้น fallback เป็น default (เช่น 10,000)
+const uploadLimit = packageResult.rows[0]?.upload_limit ?? 10000;
+
+// ตรวจสอบว่าเกิน limit หรือยัง
+if (uploadCount >= uploadLimit) {
+  await lineClient.replyMessage(event.replyToken, {
+    type: 'text',
+    text: `คุณใช้งานถึงขีดจำกัดแล้ว (${uploadLimit.toLocaleString()} รูป)\nกรุณาติดต่อผู้ดูแลระบบ`
+  });
+  return;
+}
+
+// --- ถ้ายังไม่ถึง limit ให้ทำต่อได้ตามปกติ ---
+    console.log('✅ Upload limit check passed:', { uploadCount, uploadLimit }); 
+
     
-    if (uploadCount >= 10000) {
-      await lineClient.replyMessage(event.replyToken, {
-        type: 'text',
-        text: 'คุณใช้งานถึงขีดจำกัดแล้ว (10,000 รูป)\nกรุณาติดต่อผู้ดูแลระบบ'
-      });
-      return;
-    }
 
     // Get image content from LINE
     console.log('📥 Fetching image from LINE API...', { messageId });

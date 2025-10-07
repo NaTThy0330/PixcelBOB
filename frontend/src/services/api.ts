@@ -174,6 +174,10 @@ class ApiService {
     }>('/stats/activity');
     return response;
   }
+
+  async getPackages() {
+    return fetch('/api/packages').then(res => res.json());
+  }
 }
 
 export const apiService = new ApiService();

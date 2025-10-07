@@ -63,6 +63,25 @@ CREATE TABLE IF NOT EXISTS upload_history (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Create packages
+CREATE TABLE packages (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  upload_limit INT NOT NULL,
+  price INT NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  is_editable BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE user_packages (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  package_id INT REFERENCES packages(id),
+  start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  end_date TIMESTAMP,
+  is_trial BOOLEAN DEFAULT FALSE
+);
+
 -- Create indexes for upload_history
 CREATE INDEX IF NOT EXISTS idx_upload_history_user_id ON upload_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_upload_history_status ON upload_history(upload_status);
@@ -72,3 +91,4 @@ CREATE INDEX IF NOT EXISTS idx_upload_history_created_at ON upload_history(creat
 DROP TRIGGER IF EXISTS update_pending_uploads_updated_at ON pending_uploads;
 CREATE TRIGGER update_pending_uploads_updated_at BEFORE UPDATE
     ON pending_uploads FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

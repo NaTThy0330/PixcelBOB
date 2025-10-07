@@ -3,7 +3,7 @@ import { PixelBackground } from './PixelBackground';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
 import { apiService } from '../services/api';
-import { Upload, Quota, UsageStats } from '../types';
+import { Upload, Quota, UsageStats, Package } from '../types';
 
 interface BillingPageProps {
   onBack: () => void;
@@ -16,9 +16,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   useEffect(() => {
     fetchBillingData();
+    fetchPackages();
   }, []);
 
   const fetchBillingData = async () => {
@@ -40,11 +42,14 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
     }
   };
 
-  const packages = [
-    { name: 'Starter', photos: 10000, price: 39, popular: true },
-    { name: 'Pro', photos: 50000, price: 149, popular: false },
-    { name: 'Business', photos: 100000, price: 249, popular: false },
-  ];
+  const fetchPackages = async () => {
+    try {
+      const res = await apiService.getPackages();
+      if (res.data) setPackages(res.data.packages);
+    } catch (error) {
+      console.error('Failed to fetch packages:', error);
+    }
+  };
 
   return (
     <PixelBackground>
@@ -134,13 +139,10 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {packages.map((pkg, index) => (
                     <div 
-                      key={index}
+                      key={pkg.id || index}
                       className={`
                         border-4 p-4 text-center font-mono relative
-                        ${pkg.popular 
-                          ? 'border-yellow-400 bg-yellow-50' 
-                          : 'border-gray-400 bg-white'
-                        }
+                        ${pkg.popular ? 'border-yellow-400 bg-yellow-50' : 'border-gray-400 bg-white'}
                       `}
                     >
                       {pkg.popular && (
@@ -148,17 +150,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
                           POPULAR
                         </div>
                       )}
-                      
                       <div className="mb-4">
                         <h3 className="font-bold text-lg text-gray-800">{pkg.name}</h3>
                         <div className="text-2xl font-bold text-blue-600 my-2">
                           ฿{pkg.price}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {pkg.photos.toLocaleString()} photos
+                          {pkg.upload_limit.toLocaleString()} photos
                         </div>
                       </div>
-
                       <PixelButton 
                         variant={selectedPackage === index ? 'success' : pkg.popular ? 'primary' : 'secondary'}
                         className="w-full font-mono"
