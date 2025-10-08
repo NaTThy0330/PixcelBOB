@@ -1,4 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://pixcelbob.onrender.com';
+console.log('API Base URL:', API_BASE_URL);
+console.log('Environment:', import.meta.env.MODE);
+console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
 
 interface ApiResponse<T = any> {
   data?: T;
@@ -125,40 +128,56 @@ class ApiService {
   }
 
   async getUploads(limit = 20, offset = 0) {
-    const response = await this.request<{
-      uploads: Array<{
-        id: string;
-        file_name: string;
-        google_drive_file_id: string;
-        upload_date: string;
-        file_size: number;
-      }>;
-      total: number;
-    }>(`/user/uploads?limit=${limit}&offset=${offset}`);
+    const response = await this.request<any>(`/user/uploads?limit=${limit}&offset=${offset}`);
+    if (response.data && Array.isArray(response.data.uploads)) {
+      const mapped = response.data.uploads.map((u: any) => ({
+        id: u.id,
+        file_name: u.google_file_name || u.file_name || '',
+        google_drive_file_id: u.google_file_id || u.google_drive_file_id || '',
+        upload_date: u.created_at || u.upload_date || '',
+        file_size: typeof u.file_size === 'number' ? u.file_size : parseInt(u.file_size || '0', 10),
+      }));
+      return { data: { uploads: mapped, total: response.data.pagination?.total ?? mapped.length } };
+    }
     return response;
   }
 
   // Stats endpoints
   async getUsageStats(days = 7) {
-    const response = await this.request<{
-      totalUploads: number;
-      totalSize: number;
-      uploadsByDay: Array<{
-        date: string;
-        count: number;
-        size: number;
-      }>;
-    }>(`/stats/usage?days=${days}`);
+    const response = await this.request<any>(`/stats/usage?days=${days}`);
+    if (response.data) {
+      // Backend returns { summary: { totalUploads, totalSize, ... }, daily: [{ upload_date, count, size }] }
+      const summary = response.data.summary || {};
+      const daily = Array.isArray(response.data.daily) ? response.data.daily : [];
+      const shaped = {
+        totalUploads: Number(summary.totalUploads) || 0,
+        totalSize: Number(summary.totalSize) || 0,
+        uploadsByDay: daily.map((d: any) => ({
+          date: d.upload_date || d.date || '',
+          count: Number(d.count) || 0,
+          size: Number(d.size) || 0,
+        })),
+      };
+      return { data: shaped };
+    }
     return response;
   }
 
   async getQuota() {
-    const response = await this.request<{
-      usage: number;
-      limit: number;
-      usageInDrive: number;
-      usageInDriveTrash: number;
-    }>('/stats/quota');
+    const response = await this.request<any>('/stats/quota');
+    if (response.data && response.data.quota) {
+      const q = response.data.quota;
+      // Normalize to { usage, limit, usageInDrive, usageInDriveTrash }
+      const shaped = {
+        usage: Number(q.usedQuota) || 0,
+        limit: Number(q.totalQuota) || 0,
+        usageInDrive: Number(q.usedQuota) || 0, // not provided explicitly; mirror usage
+        usageInDriveTrash: 0,
+        packageName: q.package || undefined,
+        price: typeof q.price === 'number' ? q.price : (q.price ? Number(q.price) : undefined),
+      };
+      return { data: shaped };
+    }
     return response;
   }
 

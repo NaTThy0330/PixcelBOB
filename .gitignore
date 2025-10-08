@@ -22,3 +22,7 @@ Thumbs.db
 *.pem
 *.key
 *.cert
+\n+# Local nested repo copy (ignore if re-added)
+PixcelBOB/
+Pixel Art Background/
+*.tgz

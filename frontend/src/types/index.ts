@@ -37,6 +37,8 @@ export interface Quota {
   limit: number;
   usageInDrive: number;
   usageInDriveTrash: number;
+  packageName?: string;
+  price?: number;
 }
 
 export interface Activity {

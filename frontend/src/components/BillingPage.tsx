@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PixelBackground } from './PixelBackground';
+import { PixelBackground } from './Background';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
 import { apiService } from '../services/api';
@@ -73,9 +73,9 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
           <PixelCard title="📦 Current Package">
             <div className="space-y-4">
               <div className="bg-blue-50 border-2 border-blue-200 p-4 font-mono text-center">
-                <div className="text-2xl font-bold text-blue-600 mb-2">Starter Plan</div>
-                <div className="text-lg mb-1">10,000 Photos</div>
-                <div className="text-sm text-gray-600">฿39 / package</div>
+                <div className="text-2xl font-bold text-blue-600 mb-2">{quota?.packageName || 'newbie'}</div>
+                <div className="text-lg mb-1">{(quota?.limit ?? 0).toLocaleString()} Photos</div>
+                <div className="text-sm text-gray-600">{typeof quota?.price === 'number' ? `฿${quota.price} / package` : 'Free'}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -85,10 +85,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
                 </div>
                 <div className="bg-orange-50 border-2 border-orange-200 p-3 text-center font-mono">
                   <div className="text-lg font-bold text-orange-600">
-                  {loading ? '...' : quota && usageStats 
-                    ? Math.max(0, (quota.limit || 10000) - (usageStats.totalUploads || 0)).toLocaleString() 
-                    : '0'
-                  }
+                  {loading 
+                    ? '...'
+                    : quota && usageStats 
+                      ? Math.max(0, (Math.max(0, quota.limit ?? 0)) - (usageStats.totalUploads || 0)).toLocaleString()
+                      : '0'}
                 </div>
                   <div className="text-xs text-gray-600">Photos Left</div>
                 </div>

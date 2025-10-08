@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PixelBackground } from './PixelBackground';
+import { PixelBackground } from './Background';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
 import { apiService } from '../services/api';

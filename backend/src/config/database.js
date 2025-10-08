@@ -5,7 +5,8 @@ const pool = new Pool(
   process.env.DATABASE_URL
     ? {
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        // Always enable SSL for DATABASE_URL (e.g., Render) to avoid local dev issues
+        ssl: { rejectUnauthorized: false },
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,

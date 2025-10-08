@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PixelBackground } from './PixelBackground';
+import { PixelBackground } from './Background';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
 import { apiService } from '../services/api';
@@ -115,24 +115,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="w-full bg-gray-200 border border-gray-400 h-4">
                   <div 
                     className="bg-blue-500 h-full border-r border-blue-600"
-                    style={{ width: loading || !usageStats || !quota ? '0%' : `${(usageStats.totalUploads / (quota.limit || 10000)) * 100}%` }}
+                    style={{ 
+                      width: loading || !usageStats || !quota || !quota.limit 
+                        ? '0%'
+                        : `${Math.min(100, (usageStats.totalUploads / Math.max(1, quota.limit)) * 100)}%` 
+                    }}
                   ></div>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {loading ? '...' : quota && usageStats ? `${Math.max(0, (quota.limit || 10000) - usageStats.totalUploads).toLocaleString()} photos remaining` : '...'}
+                  {loading 
+                    ? '...'
+                    : quota && usageStats 
+                      ? `${Math.max(0, (Math.max(0, quota.limit ?? 0)) - usageStats.totalUploads).toLocaleString()} photos remaining`
+                      : '...'}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-green-50 border-2 border-green-200 p-3 text-center font-mono">
-                  <div className="text-lg font-bold text-green-600">{loading ? '...' : (quota?.limit || 10000).toLocaleString()}</div>
-                  <div className="text-xs text-gray-600">Package Limit</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-50 border-2 border-green-200 p-3 text-center font-mono">
+                    <div className="text-lg font-bold text-green-600">{loading ? '...' : (quota?.limit ?? 0).toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">Package Limit</div>
+                  </div>
+                  <div className="bg-orange-50 border-2 border-orange-200 p-3 text-center font-mono">
+                    <div className="text-lg font-bold text-orange-600">{loading ? '...' : (typeof quota?.price === 'number' ? `฿${quota.price}` : 'Free')}</div>
+                    <div className="text-xs text-gray-600">Current Package</div>
+                  </div>
                 </div>
-                <div className="bg-orange-50 border-2 border-orange-200 p-3 text-center font-mono">
-                  <div className="text-lg font-bold text-orange-600">฿39</div>
-                  <div className="text-xs text-gray-600">Current Package</div>
-                </div>
-              </div>
             </div>
           </PixelCard>
 

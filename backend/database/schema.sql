@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Create index on line_user_id for faster lookups
 CREATE INDEX idx_users_line_user_id ON users(line_user_id);
+-- Ensure one user per email address (allow NULLs)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_email ON users(google_email) WHERE google_email IS NOT NULL;
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

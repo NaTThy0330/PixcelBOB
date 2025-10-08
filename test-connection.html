@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Connection</title>
+</head>
+<body>
+    <h1>Testing Frontend-Backend Connection</h1>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testCORS()">Test CORS</button>
+    <pre id="result"></pre>
+
+    <script>
+        const BACKEND_URL = 'https://pixcelbob.onrender.com';
+        const resultDiv = document.getElementById('result');
+
+        async function testHealth() {
+            try {
+                resultDiv.textContent = 'Testing health endpoint...';
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function testCORS() {
+            try {
+                resultDiv.textContent = 'Testing CORS...';
+                const response = await fetch(`${BACKEND_URL}/health`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                resultDiv.textContent = `CORS OK!\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.textContent = `CORS Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

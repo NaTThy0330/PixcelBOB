@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt</title>
+  <style>
+    body {
+      font-family: "Tahoma", "Arial", sans-serif;
+      font-size: 13px;
+      margin: 40px;
+      color: #000;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header-left {
+      width: 70%;
+    }
+    .header-right img {
+      width: 120px;
+    }
+    h2 {
+      margin: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    td, th {
+      padding: 5px;
+      vertical-align: top;
+    }
+    .bordered {
+      border: 1px solid #000;
+    }
+    .right {
+      text-align: right;
+    }
+    .center {
+      text-align: center;
+    }
+    .remarks {
+      margin-top: 20px;
+    }
+    .payment {
+      margin-top: 20px;
+    }
+    .signature {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+    }
+    .signature div {
+      width: 30%;
+      text-align: center;
+      border-top: 1px solid #000;
+      padding-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h2>ใบเสร็จรับเงิน</h2>
+    <div>( ต้นฉบับ / original )</div>
+    <p><b>ลูกค้า / Customer:</b> บริษัท ที ยู ยู อินเตอร์เน็ต จำกัด<br>
+       <b>ที่อยู่ / Address:</b> เลขที่ 145/161 ซอยบุญยืน 27/7 แขวงทุ่งสองห้อง เขตหลักสี่ เขตบางเขน กรุงเทพมหานคร 10220<br>
+       <b>เลขผู้เสียภาษี / Tax ID:</b> 0105557083391<br>
+       <b>ผู้ติดต่อ / Attention:</b> Keng
+    </p>
+  </div>
+  <div class="header-right">
+    <img src="https://i.imgur.com/x0BSyhz.png" alt="logo"><br><br>
+    <b>เลขที่ / No.:</b> RT-2019100005<br>
+    <b>วันที่ / Issue:</b> 01/10/2019<br>
+    <b>อ้างอิง / Ref:</b> IVT-201910001
+  </div>
+</div>
+
+<hr>
+
+<p>
+  <b>ผู้ออก / Issuer:</b> ATest Production Company Limited (Head Office)<br>
+  อาคาร ไทยพาณิชย์ เลขที่ 145/161 ซอย27/7 แขวงทุ่งสองห้อง เขตบางเขน กรุงเทพมหานคร 10220<br>
+  <b>เลขผู้เสียภาษี / Tax ID:</b> 0105557123422<br>
+  <b>จัดเตรียมโดย / Prepared by:</b> Panupong Palawong<br>
+  <b>T:</b> 25 &nbsp;&nbsp; <b>W:</b> https://peakengine.com &nbsp;&nbsp; <b>E:</b> info@engensoft.com
+</p>
+
+<table border="1">
+  <thead>
+    <tr class="center">
+      <th>รหัส<br>ID no.</th>
+      <th>คำอธิบาย<br>Description</th>
+      <th>จำนวน<br>Quantity</th>
+      <th>ราคาต่อหน่วย<br>Unit Price</th>
+      <th>ภาษี<br>VAT</th>
+      <th>มูลค่าก่อนภาษี<br>Pre-Tax Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="center">
+      <td>PO1599</td>
+      <td class="left">TestStockCreditNote</td>
+      <td>1</td>
+      <td class="right">10,000.00</td>
+      <td>7%</td>
+      <td class="right">10,000.00</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="remarks">
+  <b>หมายเหตุ / Remarks:</b> ใบเสร็จรับเงินนี้ยังไม่สมบูรณ์ถ้ามีการรับชำระเงิน
+</div>
+
+<table>
+  <tr>
+    <td class="right"><b>ราคาสินค้าก่อนเสียภาษี (บาท) / Pre-VAT Amount</b></td>
+    <td class="right">10,000.00</td>
+  </tr>
+  <tr>
+    <td class="right"><b>ภาษีมูลค่าเพิ่ม (บาท) / VAT</b></td>
+    <td class="right">700.00</td>
+  </tr>
+  <tr>
+    <td class="right"><b>จำนวนเงินรวมทั้งสิ้น (บาท) / Grand Total</b></td>
+    <td class="right">10,700.00</td>
+  </tr>
+</table>
+
+<p class="right"><b>จำนวนเงินรวมทั้งสิ้น: หนึ่งหมื่นเจ็ดร้อยบาทถ้วน</b></p>
+
+<div class="payment">
+  <b>การชำระเงิน / Payment</b><br>
+  ☑ เงินสด : ชำระวันที่ 01/10/2019 ยอด 10,700.00 บาท
+</div>
+
+<div class="signature">
+  <div>อนุมัติโดย / Approved by</div>
+  <div>รับชำระ / Received by</div>
+</div>
+
+</body>
+</html>

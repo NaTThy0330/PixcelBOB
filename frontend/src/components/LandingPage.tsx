@@ -1,7 +1,8 @@
 import React from 'react';
-import { PixelBackground } from './PixelBackground';
+import { PixelBackground } from './Background';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
+import { PixelCatLogo } from './PixelCatLogo';
 
 interface LandingPageProps {
   onGoogleLogin: () => void;
@@ -14,13 +15,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGoogleLogin }) => {
         <div className="max-w-md w-full">
           <PixelCard title="LINE → Google Drive">
             <div className="space-y-6">
-              {/* Logo/Icon */}
+              {/* Logo: Pixel Cat + Brand */}
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-green-500 border-4 border-green-600 flex items-center justify-center">
-                  <div className="w-8 h-8 bg-white border-2 border-gray-300 rounded-sm flex items-center justify-center">
-                    <div className="w-4 h-4 bg-blue-500 border border-blue-600"></div>
-                  </div>
-                </div>
+                <PixelCatLogo />
               </div>
 
               {/* Description */}
@@ -40,15 +37,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGoogleLogin }) => {
                   className="w-full font-mono"
                 >
                   🔗 Login with Google
-                </PixelButton>
-
-                <PixelButton 
-                  variant="success"
-                  size="lg"
-                  className="w-full font-mono"
-                  disabled
-                >
-                  📱 Connect LINE (Optional)
                 </PixelButton>
               </div>
 

@@ -37,20 +37,59 @@ const handleGoogleCallback = async (req, res) => {
     const googleEmail = userInfo.data.email;
     const googleRefreshToken = tokens.refresh_token;
 
-    const query = `
-      INSERT INTO users (line_user_id, google_email, google_refresh_token)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (line_user_id) 
-      DO UPDATE SET 
-        google_email = $2,
-        google_refresh_token = $3,
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING id, line_user_id, google_email;
-    `;
+    // Ensure a single user per google_email. If a user with this email exists, update it.
+    let user;
+    const existing = await pool.query(
+      'SELECT id, line_user_id FROM users WHERE google_email = $1 LIMIT 1',
+      [googleEmail]
+    );
 
-    const values = [lineUserId, googleEmail, googleRefreshToken];
-    const result = await pool.query(query, values);
-    const user = result.rows[0];
+    if (existing.rows.length > 0) {
+      const userId = existing.rows[0].id;
+      // Only set line_user_id if provided (preserve existing if null)
+      const update = await pool.query(
+        `UPDATE users
+         SET 
+           line_user_id = COALESCE($1, line_user_id),
+           google_refresh_token = $2,
+           updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING id, line_user_id, google_email`,
+        [lineUserId || null, googleRefreshToken, userId]
+      );
+      user = update.rows[0];
+    } else {
+      const insert = await pool.query(
+        `INSERT INTO users (line_user_id, google_email, google_refresh_token)
+         VALUES ($1, $2, $3)
+         RETURNING id, line_user_id, google_email`,
+        [lineUserId || null, googleEmail, googleRefreshToken]
+      );
+      user = insert.rows[0];
+    }
+
+    // Ensure the user has at least the 'newbie' package assigned
+    try {
+      const hasPkg = await pool.query(
+        'SELECT 1 FROM user_packages WHERE user_id = $1 LIMIT 1',
+        [user.id]
+      );
+      if (hasPkg.rows.length === 0) {
+        const pkgRes = await pool.query(
+          "SELECT id, upload_limit FROM packages WHERE name = 'newbie' AND is_active = true LIMIT 1"
+        );
+        if (pkgRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO user_packages (user_id, package_id, start_date, is_trial)
+             VALUES ($1, $2, CURRENT_DATE, true)`,
+            [user.id, pkgRes.rows[0].id]
+          );
+        }
+      }
+    } catch (e) {
+      // If packages tables do not exist, skip silently
+      console.warn('Package assignment skipped:', e.message);
+    }
 
     const jwtToken = jwt.sign(
       { 

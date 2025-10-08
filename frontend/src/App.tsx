@@ -64,12 +64,26 @@ export default function App() {
         const userData = response.data.user;
         console.log('User authenticated:', userData.email);
         
+        // Try to resolve selected folder name if folder ID exists
+        let resolvedFolderName: string | undefined = undefined;
+        if (userData.google_drive_folder_id) {
+          try {
+            const foldersRes = await apiService.getFolders();
+            const folders = foldersRes.data?.folders || [];
+            const match = folders.find((f: any) => f.id === userData.google_drive_folder_id);
+            resolvedFolderName = match?.name || 'Selected';
+          } catch (e) {
+            console.warn('Failed to fetch folder list to resolve name:', e);
+            resolvedFolderName = 'Selected';
+          }
+        }
+
         setUser({
           email: userData.email,
           name: userData.name,
           googleConnected: true,
           lineConnected: !!userData.line_user_id,
-          selectedFolder: userData.google_drive_folder_id ? 'Selected' : undefined,
+          selectedFolder: resolvedFolderName,
           selectedFolderId: userData.google_drive_folder_id,
         });
         // Navigate based on user state

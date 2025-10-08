@@ -74,29 +74,58 @@ const getQuotaInfo = async (req, res) => {
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get user's package info (for now, return default values)
-    // In a real implementation, this would fetch from a subscriptions table
-    const quota = {
-      package: 'Basic',
-      totalQuota: 10000, // 10,000 images
-      usedQuota: 0,
-      remainingQuota: 10000,
-      resetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
-    };
+    // Resolve current package from user_packages/packages (fallback to 'newbie')
+    let pkg = null;
+    try {
+      const pkgQuery = `
+        SELECT p.id, p.name, p.upload_limit, p.price
+        FROM user_packages up
+        JOIN packages p ON p.id = up.package_id
+        WHERE up.user_id = $1
+          AND (up.end_date IS NULL OR up.end_date >= CURRENT_DATE)
+        ORDER BY up.start_date DESC
+        LIMIT 1`;
+      const pkgRes = await pool.query(pkgQuery, [decoded.id]);
+      if (pkgRes.rows.length > 0) pkg = pkgRes.rows[0];
+      if (!pkg) {
+        const newbieRes = await pool.query(
+          "SELECT id, name, upload_limit, price FROM packages WHERE name = 'newbie' AND is_active = true LIMIT 1"
+        );
+        if (newbieRes.rows.length > 0) {
+          pkg = newbieRes.rows[0];
+          // Auto-assign newbie if user has no package
+          await pool.query(
+            `INSERT INTO user_packages (user_id, package_id, start_date, is_trial)
+             SELECT $1, $2, CURRENT_DATE, true
+             WHERE NOT EXISTS (SELECT 1 FROM user_packages WHERE user_id = $1)`,
+            [decoded.id, pkg.id]
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Package lookup skipped:', e.message);
+    }
 
-    // Get actual usage count
+    const totalQuota = pkg?.upload_limit || 10000;
+
+    // Count total successful uploads (all-time)
     const countQuery = `
       SELECT COUNT(*) as used_count 
       FROM upload_history 
-      WHERE user_id = $1 AND upload_status = 'success'
-        AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
-    `;
-
+      WHERE user_id = $1 AND upload_status = 'success'`;
     const countResult = await pool.query(countQuery, [decoded.id]);
-    quota.usedQuota = parseInt(countResult.rows[0].used_count);
-    quota.remainingQuota = quota.totalQuota - quota.usedQuota;
+    const used = parseInt(countResult.rows[0].used_count || '0');
 
-    res.json({ quota });
+    res.json({
+      quota: {
+        package: pkg?.name || 'newbie',
+        totalQuota,
+        usedQuota: used,
+        remainingQuota: Math.max(0, totalQuota - used),
+        price: pkg?.price ?? null,
+        resetDate: null,
+      }
+    });
 
   } catch (error) {
     console.error('Error getting quota info:', error);
