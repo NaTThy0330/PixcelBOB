@@ -53,11 +53,7 @@ const handleGoogleCallback = async (req, res) => {
       console.log('⚠️ LINE User ID from session (fallback):', lineUserId);
     }
 
-    if (!lineUserId) {
-      console.error('❌ LINE User ID not found in state or session!');
-      const redirectUrl = `${process.env.FRONTEND_URL}?error=no_line_id&message=Please try connecting from LINE again`;
-      return res.redirect(redirectUrl);
-    }
+    // Note: If no LINE user ID, continue with Google-only flow by resolving user from email
 
     const tokens = await getTokens(code);
     const oauth2Client = setCredentials(tokens);
