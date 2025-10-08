@@ -3,7 +3,7 @@ import { PixelBackground } from './Background';
 import { PixelButton } from './PixelButton';
 import { PixelCard } from './PixelCard';
 import { apiService } from '../services/api';
-import { Upload, Quota, UsageStats } from '../types';
+import { Upload, Quota } from '../types';
 
 interface BillingPageProps {
   onBack: () => void;
@@ -12,39 +12,40 @@ interface BillingPageProps {
 export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
   const [showPayment, setShowPayment] = useState(false);
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [quota, setQuota] = useState<Quota | null>(null);
-  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [quota, setQuota] = useState<{ uploadLimit: number; used: number; remaining: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   useEffect(() => {
-    fetchBillingData();
+    fetchUsageData();
+    fetchPackages();
   }, []);
 
-  const fetchBillingData = async () => {
+  const fetchUsageData = async () => {
     try {
       setLoading(true);
-      const [uploadsRes, quotaRes, statsRes] = await Promise.all([
-        apiService.getUploads(20, 0),
-        apiService.getQuota(),
-        apiService.getUsageStats(30)
+      const [historyRes, quotaRes] = await Promise.all([
+        apiService.getUploadsHistory(50),
+        apiService.getQuota()
       ]);
-
-      if (uploadsRes.data) setUploads(uploadsRes.data.uploads);
+      if (historyRes.data) setUploads(historyRes.data.uploads);
       if (quotaRes.data) setQuota(quotaRes.data);
-      if (statsRes.data) setUsageStats(statsRes.data);
     } catch (error) {
-      console.error('Failed to fetch billing data:', error);
+      console.error('Failed to fetch usage data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const packages = [
-    { name: 'Starter', photos: 10000, price: 39, popular: true },
-    { name: 'Pro', photos: 50000, price: 149, popular: false },
-    { name: 'Business', photos: 100000, price: 249, popular: false },
-  ];
+  const fetchPackages = async () => {
+    try {
+      const res = await apiService.getPackages();
+      if (res.data) setPackages(res.data.packages);
+    } catch (error) {
+      console.error('Failed to fetch packages:', error);
+    }
+  };
 
   return (
     <PixelBackground>
@@ -52,15 +53,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-8">
           <PixelCard>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="font-mono text-gray-800 mb-1">💰 Billing & Usage</h1>
                 <p className="text-sm text-gray-600 font-mono">Manage your credits and view usage history</p>
               </div>
-              <PixelButton 
+              <PixelButton
                 onClick={onBack}
                 variant="secondary"
-                className="font-mono"
+                className="font-mono w-full md:w-auto"
               >
                 ← Back to Dashboard
               </PixelButton>
@@ -80,16 +81,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-green-50 border-2 border-green-200 p-3 text-center font-mono">
-                  <div className="text-lg font-bold text-green-600">{loading ? '...' : usageStats?.totalUploads?.toLocaleString() || '0'}</div>
+                  <div className="text-lg font-bold text-green-600">{loading ? '...' : uploads.length.toLocaleString() || '0'}</div>
                   <div className="text-xs text-gray-600">Photos Used</div>
                 </div>
                 <div className="bg-orange-50 border-2 border-orange-200 p-3 text-center font-mono">
                   <div className="text-lg font-bold text-orange-600">
-                  {loading 
-                    ? '...'
-                    : quota && usageStats 
-                      ? Math.max(0, (Math.max(0, quota.limit ?? 0)) - (usageStats.totalUploads || 0)).toLocaleString()
-                      : '0'}
+                  {loading ? '...' : quota 
+                    ? quota.remaining.toLocaleString() 
+                    : '0'
+                  }
                 </div>
                   <div className="text-xs text-gray-600">Photos Left</div>
                 </div>
@@ -135,13 +135,10 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {packages.map((pkg, index) => (
                     <div 
-                      key={index}
+                      key={pkg.id || index}
                       className={`
                         border-4 p-4 text-center font-mono relative
-                        ${pkg.popular 
-                          ? 'border-yellow-400 bg-yellow-50' 
-                          : 'border-gray-400 bg-white'
-                        }
+                        ${pkg.popular ? 'border-yellow-400 bg-yellow-50' : 'border-gray-400 bg-white'}
                       `}
                     >
                       {pkg.popular && (
@@ -149,17 +146,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onBack }) => {
                           POPULAR
                         </div>
                       )}
-                      
                       <div className="mb-4">
                         <h3 className="font-bold text-lg text-gray-800">{pkg.name}</h3>
                         <div className="text-2xl font-bold text-blue-600 my-2">
                           ฿{pkg.price}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {pkg.photos.toLocaleString()} photos
+                          {pkg.upload_limit.toLocaleString()} photos
                         </div>
                       </div>
-
                       <PixelButton 
                         variant={selectedPackage === index ? 'success' : pkg.popular ? 'primary' : 'secondary'}
                         className="w-full font-mono"

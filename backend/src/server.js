@@ -24,7 +24,7 @@ app.use(helmet());
 // CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'https://pixcelbob.vercel.app',
+  'https://pixcel-bob.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173' // Vite default port
 ].filter(Boolean);

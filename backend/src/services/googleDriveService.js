@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const { oauth2Client } = require('../config/googleAuth');
 const pool = require('../config/database');
+const { Readable } = require('stream');
 
 class GoogleDriveService {
   async refreshAccessToken(refreshToken) {
@@ -17,10 +18,43 @@ class GoogleDriveService {
     }
   }
 
+  async getFolderName(folderId, refreshToken) {
+    try {
+      const credentials = await this.refreshAccessToken(refreshToken);
+      oauth2Client.setCredentials(credentials);
+      const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+      const response = await drive.files.get({
+        fileId: folderId,
+        fields: 'name'
+      });
+
+      return response.data.name;
+    } catch (error) {
+      console.error('Error getting folder name:', error);
+      return null;
+    }
+  }
+
   async uploadToDrive(imageBuffer, user, fileName = null) {
     try {
+      console.log('🔄 Starting Google Drive upload process...', {
+        userId: user.id,
+        hasRefreshToken: !!user.google_refresh_token,
+        hasFolderId: !!user.google_folder_id,
+        folderId: user.google_folder_id,
+        bufferSize: imageBuffer.length
+      });
+
       // Refresh access token
+      console.log('🔑 Refreshing OAuth access token...');
       const credentials = await this.refreshAccessToken(user.google_refresh_token);
+      console.log('✅ OAuth token refreshed successfully:', {
+        hasAccessToken: !!credentials.access_token,
+        expiryDate: credentials.expiry_date,
+        scopes: credentials.scope
+      });
+
       oauth2Client.setCredentials(credentials);
 
       const drive = google.drive({ version: 'v3', auth: oauth2Client });
@@ -40,16 +74,34 @@ class GoogleDriveService {
       // Add folder if specified
       if (user.google_folder_id) {
         fileMetadata.parents = [user.google_folder_id];
+        console.log('📁 Upload target folder:', {
+          folderId: user.google_folder_id,
+          fileName: fileName
+        });
+      } else {
+        console.log('⚠️ No folder specified, uploading to My Drive root');
       }
 
+      // Convert Buffer to Stream (required by Google Drive API)
+      const bufferStream = Readable.from(imageBuffer);
+
       // Upload file
+      console.log('⬆️ Calling Google Drive API files.create()...');
       const response = await drive.files.create({
         requestBody: fileMetadata,
         media: {
           mimeType: 'image/jpeg',
-          body: Buffer.from(imageBuffer)
+          body: bufferStream
         },
-        fields: 'id, name, size, webViewLink'
+        fields: 'id, name, size, webViewLink, parents'
+      });
+
+      console.log('✅ Upload successful!', {
+        fileId: response.data.id,
+        fileName: response.data.name,
+        fileSize: response.data.size,
+        parents: response.data.parents,
+        webViewLink: response.data.webViewLink
       });
 
       // Log upload to database
@@ -63,11 +115,16 @@ class GoogleDriveService {
       };
 
     } catch (error) {
-      console.error('Error uploading to Google Drive:', error);
-      
+      console.error('❌ Error uploading to Google Drive:', {
+        errorMessage: error.message,
+        errorCode: error.code,
+        errorDetails: error.response?.data,
+        stack: error.stack
+      });
+
       // Log failed upload
       await this.logUpload(user.id, fileName || 'unknown', null, 0, 'failed', error.message);
-      
+
       throw error;
     }
   }

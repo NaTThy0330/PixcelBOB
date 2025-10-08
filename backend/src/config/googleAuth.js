@@ -13,16 +13,27 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive'
 ];
 
-const getAuthUrl = () => {
-  return oauth2Client.generateAuthUrl({
+const getAuthUrl = (lineUserId = null) => {
+  const authParams = {
     access_type: 'offline',
     scope: SCOPES,
-    prompt: 'consent'
-  });
+    prompt: 'consent',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+  };
+
+  // Pass LINE user ID via state parameter to preserve it across OAuth flow
+  if (lineUserId) {
+    authParams.state = JSON.stringify({ line_user_id: lineUserId });
+  }
+
+  return oauth2Client.generateAuthUrl(authParams);
 };
 
 const getTokens = async (code) => {
-  const { tokens } = await oauth2Client.getToken(code);
+  const { tokens } = await oauth2Client.getToken({
+    code: code,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+  });
   return tokens;
 };
 

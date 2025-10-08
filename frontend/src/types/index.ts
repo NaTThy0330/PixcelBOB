@@ -48,3 +48,13 @@ export interface Activity {
   timestamp: string;
   metadata?: any;
 }
+
+export interface Package {
+  id: number;
+  name: string;
+  upload_limit: number;
+  price: number;
+  is_active: boolean;
+  is_editable: boolean;
+  popular?: boolean; // Optional, for UI
+}

@@ -68,33 +68,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-8">
           <PixelCard>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="font-mono text-gray-800 mb-1">Dashboard</h1>
                 <p className="text-sm text-gray-600 font-mono">Welcome back, {user.name}!</p>
               </div>
-              <div className="flex space-x-2">
-                <PixelButton 
+              <div className="flex flex-wrap gap-2">
+                <PixelButton
                   onClick={() => onNavigate('billing')}
                   variant="secondary"
                   size="sm"
-                  className="font-mono"
+                  className="font-mono flex-1 md:flex-none"
                 >
                   💰 Billing
                 </PixelButton>
-                <PixelButton 
+                <PixelButton
                   onClick={() => onNavigate('settings')}
                   variant="secondary"
                   size="sm"
-                  className="font-mono"
+                  className="font-mono flex-1 md:flex-none"
                 >
                   ⚙️ Settings
                 </PixelButton>
-                <PixelButton 
+                <PixelButton
                   onClick={onLogout}
                   variant="secondary"
                   size="sm"
-                  className="font-mono"
+                  className="font-mono flex-1 md:flex-none"
                 >
                   🚪 Logout
                 </PixelButton>

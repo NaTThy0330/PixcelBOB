@@ -6,12 +6,17 @@ const jwt = require('jsonwebtoken');
 const initiateGoogleAuth = (req, res) => {
   try {
     const lineUserId = req.query.line_user_id || req.session.line_user_id;
-    
+
+    console.log('🔐 Initiating Google auth for LINE user:', lineUserId);
+
     if (lineUserId) {
       req.session.line_user_id = lineUserId;
     }
-    
-    const authUrl = getAuthUrl();
+
+    // Pass LINE user ID via state parameter (more reliable than sessions for external browser)
+    const authUrl = getAuthUrl(lineUserId);
+    console.log('Generated auth URL with LINE user ID in state');
+    console.log('GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
     res.json({ authUrl });
   } catch (error) {
     console.error('Error initiating Google auth:', error);
@@ -21,11 +26,37 @@ const initiateGoogleAuth = (req, res) => {
 
 const handleGoogleCallback = async (req, res) => {
   try {
-    const { code } = req.query;
-    const lineUserId = req.session.line_user_id;
+    console.log('Callback received - Query params:', req.query);
+    console.log('Callback URL:', req.url);
+    const { code, state } = req.query;
 
     if (!code) {
+      console.error('No authorization code provided');
       return res.status(400).json({ error: 'Authorization code not provided' });
+    }
+
+    // Try to get LINE user ID from state parameter (primary method)
+    let lineUserId = null;
+    if (state) {
+      try {
+        const stateData = JSON.parse(state);
+        lineUserId = stateData.line_user_id;
+        console.log('✅ LINE User ID from state parameter:', lineUserId);
+      } catch (e) {
+        console.error('Failed to parse state parameter:', e);
+      }
+    }
+
+    // Fallback to session if state doesn't have it
+    if (!lineUserId && req.session?.line_user_id) {
+      lineUserId = req.session.line_user_id;
+      console.log('⚠️ LINE User ID from session (fallback):', lineUserId);
+    }
+
+    if (!lineUserId) {
+      console.error('❌ LINE User ID not found in state or session!');
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=no_line_id&message=Please try connecting from LINE again`;
+      return res.redirect(redirectUrl);
     }
 
     const tokens = await getTokens(code);
@@ -43,30 +74,6 @@ const handleGoogleCallback = async (req, res) => {
       'SELECT id, line_user_id FROM users WHERE google_email = $1 LIMIT 1',
       [googleEmail]
     );
-
-    if (existing.rows.length > 0) {
-      const userId = existing.rows[0].id;
-      // Only set line_user_id if provided (preserve existing if null)
-      const update = await pool.query(
-        `UPDATE users
-         SET 
-           line_user_id = COALESCE($1, line_user_id),
-           google_refresh_token = $2,
-           updated_at = CURRENT_TIMESTAMP
-         WHERE id = $3
-         RETURNING id, line_user_id, google_email`,
-        [lineUserId || null, googleRefreshToken, userId]
-      );
-      user = update.rows[0];
-    } else {
-      const insert = await pool.query(
-        `INSERT INTO users (line_user_id, google_email, google_refresh_token)
-         VALUES ($1, $2, $3)
-         RETURNING id, line_user_id, google_email`,
-        [lineUserId || null, googleEmail, googleRefreshToken]
-      );
-      user = insert.rows[0];
-    }
 
     // Ensure the user has at least the 'newbie' package assigned
     try {
@@ -90,12 +97,27 @@ const handleGoogleCallback = async (req, res) => {
       // If packages tables do not exist, skip silently
       console.warn('Package assignment skipped:', e.message);
     }
+    const values = [lineUserId, googleEmail, googleRefreshToken];
+    console.log('💾 Saving to database:', {
+      lineUserId,
+      googleEmail,
+      hasRefreshToken: !!googleRefreshToken
+    });
+
+    const result = await pool.query(query, values);
+    const user = result.rows[0];
+
+    console.log('✅ User saved to database:', {
+      id: user.id,
+      line_user_id: user.line_user_id,
+      google_email: user.google_email
+    });
 
     const jwtToken = jwt.sign(
-      { 
-        id: user.id, 
-        line_user_id: user.line_user_id, 
-        google_email: user.google_email 
+      {
+        id: user.id,
+        line_user_id: user.line_user_id,
+        google_email: user.google_email
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -103,8 +125,19 @@ const handleGoogleCallback = async (req, res) => {
 
     req.session.destroy();
 
-    // Redirect back to frontend with token
-    const redirectUrl = `${process.env.FRONTEND_URL}?token=${jwtToken}`;
+    // Redirect back to LIFF if available, otherwise to frontend
+    let redirectUrl;
+    if (process.env.LIFF_URL) {
+      // Redirect to LIFF URL - will open in LINE app
+      redirectUrl = `${process.env.LIFF_URL}?token=${jwtToken}`;
+    } else {
+      // Fallback to regular frontend URL
+      redirectUrl = `${process.env.FRONTEND_URL}?token=${jwtToken}`;
+    }
+
+    console.log('Redirecting to:', redirectUrl);
+    console.log('FRONTEND_URL env var:', process.env.FRONTEND_URL);
+    console.log('LIFF_URL env var:', process.env.LIFF_URL);
     res.redirect(redirectUrl);
 
   } catch (error) {

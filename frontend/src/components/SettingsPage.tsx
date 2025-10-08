@@ -193,7 +193,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 <PixelButton 
                   variant="primary"
                   className="w-full font-mono"
-                  onClick={() => window.location.href = 'mailto:support@example.com'}
+                  onClick={() => window.location.href = 'mailto:testerminutebot@gmail.com'}
                 >
                   📧 Email Support
                 </PixelButton>
@@ -201,7 +201,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 <PixelButton 
                   variant="success"
                   className="w-full font-mono"
-                  onClick={() => window.open('https://line.me/ti/p/@your-line-id', '_blank')}
+                  onClick={() => window.open('https://line.me/ti/p/@117eopzr', '_blank')}
                 >
                   💬 LINE Support
                 </PixelButton>

@@ -26,48 +26,92 @@ export const PixelBackground: React.FC<{ children: React.ReactNode }> = ({ child
       </div>
 
       {/* Main content area */}
-      <div className="relative z-10 min-h-screen flex flex-col">
-        <div className="flex-1 pb-24">
-          {children}
-        </div>
+      <div className="relative z-10 min-h-screen">
+        {children}
+      </div>
 
-        {/* Grass at bottom */}
-        <div 
-          className="absolute bottom-0 w-full h-24 pixel-grass"
-          style={{ backgroundColor: '#61A563' }}
-        >
-          {/* Grass blades */}
-          {[...Array(30)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute bottom-0 w-1 bg-green-600"
-              style={{
-                left: `${i * 3.33}%`,
-                height: `${16 + Math.random() * 16}px`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Character sitting on grass */}
-        <div className="absolute bottom-6 left-8 z-20">
+      {/* Pixel clouds at bottom */}
+      <div className="absolute bottom-0 w-full h-32 pointer-events-none">
+        {/* Cloud 1 - Left */}
+        <div className="absolute bottom-8 left-[5%] opacity-30">
           <div className="relative">
-            {/* Character body */}
-            <div className="w-8 h-12 bg-pink-300 border-2 border-pink-400 pixel-character">
-              {/* Head */}
-              <div className="absolute -top-6 left-1 w-6 h-6 bg-peach-200 border-2 border-peach-300 rounded-sm">
-                {/* Hair */}
-                <div className="absolute -top-2 -left-1 w-8 h-4 bg-amber-700 border border-amber-800 rounded-sm"></div>
-                {/* Eyes */}
-                <div className="absolute top-1 left-1 w-1 h-1 bg-black rounded-full"></div>
-                <div className="absolute top-1 right-1 w-1 h-1 bg-black rounded-full"></div>
-              </div>
-              {/* Arms */}
-              <div className="absolute top-2 -left-2 w-2 h-4 bg-peach-200 border border-peach-300 rounded-sm"></div>
-              <div className="absolute top-2 -right-2 w-2 h-4 bg-peach-200 border border-peach-300 rounded-sm"></div>
-            </div>
+            <div className="w-16 h-3 bg-white"></div>
+            <div className="absolute top-[-6px] left-2 w-12 h-3 bg-white"></div>
+            <div className="absolute top-[-10px] left-4 w-8 h-3 bg-white"></div>
           </div>
         </div>
+
+        {/* Cloud 2 - Center Left */}
+        <div className="absolute bottom-12 left-[25%] opacity-20">
+          <div className="relative">
+            <div className="w-20 h-4 bg-white"></div>
+            <div className="absolute top-[-8px] left-3 w-14 h-4 bg-white"></div>
+            <div className="absolute top-[-12px] left-6 w-10 h-4 bg-white"></div>
+          </div>
+        </div>
+
+        {/* Cloud 3 - Center Right */}
+        <div className="absolute bottom-10 right-[30%] opacity-25">
+          <div className="relative">
+            <div className="w-18 h-3 bg-white"></div>
+            <div className="absolute top-[-6px] left-2 w-14 h-3 bg-white"></div>
+            <div className="absolute top-[-10px] left-5 w-10 h-3 bg-white"></div>
+          </div>
+        </div>
+
+        {/* Cloud 4 - Right */}
+        <div className="absolute bottom-6 right-[8%] opacity-30">
+          <div className="relative">
+            <div className="w-16 h-3 bg-white"></div>
+            <div className="absolute top-[-6px] left-2 w-12 h-3 bg-white"></div>
+            <div className="absolute top-[-10px] left-4 w-8 h-3 bg-white"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pixel treasure chests in corners */}
+      {/* Left chest */}
+      <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
+        <div className="relative w-10 h-10">
+          {/* Chest body */}
+          <div className="absolute bottom-0 w-10 h-7 bg-amber-700 border-2 border-amber-900"></div>
+          {/* Chest lid */}
+          <div className="absolute top-0 w-10 h-4 bg-amber-600 border-2 border-amber-900"></div>
+          {/* Lock */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-2 h-3 bg-yellow-400 border border-yellow-600"></div>
+          {/* Keyhole */}
+          <div className="absolute top-5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-900"></div>
+        </div>
+      </div>
+
+      {/* Right chest */}
+      <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
+        <div className="relative w-10 h-10">
+          {/* Chest body */}
+          <div className="absolute bottom-0 w-10 h-7 bg-amber-700 border-2 border-amber-900"></div>
+          {/* Chest lid */}
+          <div className="absolute top-0 w-10 h-4 bg-amber-600 border-2 border-amber-900"></div>
+          {/* Lock */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-2 h-3 bg-yellow-400 border border-yellow-600"></div>
+          {/* Keyhole */}
+          <div className="absolute top-5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-900"></div>
+        </div>
+      </div>
+
+      {/* Floating fireflies */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-yellow-300 rounded-full pixel-firefly"
+            style={{
+              left: `${15 + Math.random() * 70}%`,
+              top: `${40 + Math.random() * 40}%`,
+              animationDelay: `${Math.random() * 4}s`,
+              opacity: 0.7,
+            }}
+          />
+        ))}
       </div>
 
     </div>

@@ -1570,6 +1570,30 @@ html, body {
 @keyframes crtFlicker {
   0%, 100% { opacity: .9; }
   50% { opacity: .95; }
+@keyframes firefly {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateY(0) translateX(0);
+  }
+
+  25% {
+    opacity: 1;
+    transform: translateY(-10px) translateX(5px);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: translateY(-5px) translateX(-5px);
+  }
+
+  75% {
+    opacity: 1;
+    transform: translateY(-15px) translateX(10px);
+  }
+}
+
+.pixel-firefly {
+  animation: 4s ease-in-out infinite firefly;
 }
 
 @property --tw-translate-x {
