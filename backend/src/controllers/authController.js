@@ -73,7 +73,7 @@ const handleGoogleCallback = async (req, res) => {
     const query = `
       INSERT INTO users (line_user_id, google_email, google_refresh_token)
       VALUES ($1, $2, $3)
-      ON CONFLICT ON CONSTRAINT uq_users_google_email
+      ON CONFLICT (google_email)
       DO UPDATE SET
         google_refresh_token = EXCLUDED.google_refresh_token,
         line_user_id = COALESCE(users.line_user_id, EXCLUDED.line_user_id),
