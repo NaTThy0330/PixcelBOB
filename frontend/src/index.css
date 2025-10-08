@@ -1570,6 +1570,7 @@ html, body {
 @keyframes crtFlicker {
   0%, 100% { opacity: .9; }
   50% { opacity: .95; }
+}
 @keyframes firefly {
   0%, 100% {
     opacity: 0.3;

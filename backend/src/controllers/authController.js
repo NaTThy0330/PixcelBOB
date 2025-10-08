@@ -68,19 +68,31 @@ const handleGoogleCallback = async (req, res) => {
     const googleEmail = userInfo.data.email;
     const googleRefreshToken = tokens.refresh_token;
 
-    // Ensure a single user per google_email. If a user with this email exists, update it.
+    // Prepare upsert for user by google_email
     let user;
-    const existing = await pool.query(
-      'SELECT id, line_user_id FROM users WHERE google_email = $1 LIMIT 1',
-      [googleEmail]
-    );
+    const query = `
+      INSERT INTO users (line_user_id, google_email, google_refresh_token)
+      VALUES ($1, $2, $3)
+      ON CONFLICT ON CONSTRAINT uq_users_google_email
+      DO UPDATE SET
+        google_refresh_token = EXCLUDED.google_refresh_token,
+        line_user_id = COALESCE(users.line_user_id, EXCLUDED.line_user_id),
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id, line_user_id, google_email, google_folder_id;
+    `;
+    const values = [lineUserId, googleEmail, googleRefreshToken];
+    console.log('💾 Saving to database:', {
+      lineUserId,
+      googleEmail,
+      hasRefreshToken: !!googleRefreshToken
+    });
 
-    // Ensure the user has at least the 'newbie' package assigned
+    const result = await pool.query(query, values);
+    user = result.rows[0];
+
+    // Ensure the user has at least the 'newbie' package assigned (best-effort)
     try {
-      const hasPkg = await pool.query(
-        'SELECT 1 FROM user_packages WHERE user_id = $1 LIMIT 1',
-        [user.id]
-      );
+      const hasPkg = await pool.query('SELECT 1 FROM user_packages WHERE user_id = $1 LIMIT 1', [user.id]);
       if (hasPkg.rows.length === 0) {
         const pkgRes = await pool.query(
           "SELECT id, upload_limit FROM packages WHERE name = 'newbie' AND is_active = true LIMIT 1"
@@ -94,18 +106,8 @@ const handleGoogleCallback = async (req, res) => {
         }
       }
     } catch (e) {
-      // If packages tables do not exist, skip silently
       console.warn('Package assignment skipped:', e.message);
     }
-    const values = [lineUserId, googleEmail, googleRefreshToken];
-    console.log('💾 Saving to database:', {
-      lineUserId,
-      googleEmail,
-      hasRefreshToken: !!googleRefreshToken
-    });
-
-    const result = await pool.query(query, values);
-    const user = result.rows[0];
 
     console.log('✅ User saved to database:', {
       id: user.id,
