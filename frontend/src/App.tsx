@@ -16,6 +16,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [lineUserId, setLineUserId] = useState<string | null>(null);
 
+  // Capture LINE user ID if provided via URL (e.g., when opened from LINE message)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const lineIdFromUrl = urlParams.get('line_user_id');
+    if (lineIdFromUrl) {
+      setLineUserId(lineIdFromUrl);
+    }
+  }, []);
+
   // Initialize LIFF
   useEffect(() => {
     const initLiff = async () => {
@@ -88,6 +97,10 @@ export default function App() {
       if (response.data?.valid && response.data.user) {
         const userData = response.data.user;
         console.log('User authenticated:', userData.email);
+
+        if (userData.line_user_id) {
+          setLineUserId(userData.line_user_id);
+        }
         
         setUser({
           email: userData.email,
