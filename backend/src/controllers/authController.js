@@ -53,11 +53,30 @@ const handleGoogleCallback = async (req, res) => {
       console.log('LINE user from session (fallback):', lineUserId);
     }
 
-    const tokens = await getTokens(code);
+    let tokens;
+    try {
+      tokens = await getTokens(code);
+    } catch (tokenError) {
+      console.error('Token exchange failed:', tokenError?.message || tokenError);
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=token_exchange_failed&message=${encodeURIComponent(
+        tokenError?.message || 'Unable to exchange code'
+      )}`;
+      return res.redirect(redirectUrl);
+    }
+
     const oauth2Client = setCredentials(tokens);
 
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const userInfo = await oauth2.userinfo.get();
+    let userInfo;
+    try {
+      userInfo = await oauth2.userinfo.get();
+    } catch (profileError) {
+      console.error('Failed to fetch Google profile:', profileError?.message || profileError);
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=profile_fetch_failed&message=${encodeURIComponent(
+        profileError?.message || 'Unable to fetch Google profile'
+      )}`;
+      return res.redirect(redirectUrl);
+    }
 
     const googleEmail = userInfo.data.email;
     const googleRefreshToken = tokens.refresh_token;
@@ -112,7 +131,11 @@ const handleGoogleCallback = async (req, res) => {
       await client.query('COMMIT');
     } catch (dbError) {
       await client.query('ROLLBACK');
-      throw dbError;
+      console.error('Database error while saving user:', dbError?.message || dbError);
+      const redirectUrl = `${process.env.FRONTEND_URL}?error=db_error&message=${encodeURIComponent(
+        dbError?.message || 'Database error'
+      )}`;
+      return res.redirect(redirectUrl);
     } finally {
       client.release();
     }
@@ -152,9 +175,11 @@ const handleGoogleCallback = async (req, res) => {
     console.log('LIFF_URL env var:', process.env.LIFF_URL);
     res.redirect(redirectUrl);
   } catch (error) {
-    console.error('Error handling Google callback:', error);
+    console.error('Error handling Google callback:', error?.message || error, error?.stack);
     // Redirect to frontend with error
-    const redirectUrl = `${process.env.FRONTEND_URL}?error=auth_failed`;
+    const redirectUrl = `${process.env.FRONTEND_URL}?error=auth_failed&message=${encodeURIComponent(
+      error?.message || 'Unexpected error'
+    )}`;
     res.redirect(redirectUrl);
   }
 };

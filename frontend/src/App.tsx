@@ -63,8 +63,9 @@ export default function App() {
     const error = urlParams.get('error');
     
     if (error) {
-      console.error('Authentication error:', error);
-      alert('Authentication failed. Please try again.');
+      const message = urlParams.get('message');
+      console.error('Authentication error:', error, message || '');
+      alert(message || 'Authentication failed. Please try again.');
       window.history.replaceState({}, document.title, window.location.pathname);
       setLoading(false);
       return;
