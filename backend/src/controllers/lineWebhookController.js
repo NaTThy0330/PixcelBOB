@@ -244,6 +244,9 @@ if (uploadCount >= uploadLimit) {
         text: errorMessage
       });
 
+      // Ensure the pending uploads table exists before storing for retry
+      await uploadProcessorService.ensurePendingUploadsTable();
+
       // Store for later retry
       const insertQuery = `
         INSERT INTO pending_uploads (line_user_id, message_id, image_data, created_at)

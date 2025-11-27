@@ -3,8 +3,39 @@ const googleDriveService = require('./googleDriveService');
 const { lineClient } = require('../config/lineConfig');
 
 class UploadProcessorService {
+  constructor() {
+    this.pendingUploadsTableReady = false;
+  }
+
+  async ensurePendingUploadsTable() {
+    if (this.pendingUploadsTableReady) return;
+
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS pending_uploads (
+        id SERIAL PRIMARY KEY,
+        line_user_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        image_data BYTEA NOT NULL,
+        processed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_pending_uploads_line_user_id ON pending_uploads(line_user_id);
+      CREATE INDEX IF NOT EXISTS idx_pending_uploads_processed ON pending_uploads(processed);
+    `;
+
+    try {
+      await pool.query(createTableQuery);
+      this.pendingUploadsTableReady = true;
+    } catch (error) {
+      console.error('Error ensuring pending_uploads table exists:', error);
+      throw error;
+    }
+  }
+
   async processPendingUploads() {
     try {
+      await this.ensurePendingUploadsTable();
+
       // Get unprocessed uploads
       const query = `
         SELECT pu.*, u.* 
