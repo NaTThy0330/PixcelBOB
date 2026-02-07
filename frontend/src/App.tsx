@@ -1,0 +1,283 @@
+import React, { useState, useEffect } from 'react';
+import liff from '@line/liff';
+import { LandingPage } from './components/LandingPage';
+import { FolderSelection } from './components/FolderSelection';
+import { Dashboard } from './components/Dashboard';
+import { BillingPage } from './components/BillingPage';
+import { SettingsPage } from './components/SettingsPage';
+import { apiService } from './services/api';
+import { User } from './types';
+
+type Page = 'landing' | 'folder-selection' | 'dashboard' | 'billing' | 'settings';
+
+export default function App() {
+  const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lineUserId, setLineUserId] = useState<string | null>(null);
+
+  // Initialize LIFF
+  useEffect(() => {
+    const initLiff = async () => {
+      try {
+        const liffId = import.meta.env.VITE_LIFF_ID;
+        if (liffId) {
+          await liff.init({ liffId });
+          console.log('LIFF initialized');
+
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            console.log('LINE user:', profile);
+            setLineUserId(profile.userId);
+          }
+        }
+      } catch (error) {
+        console.error('LIFF initialization failed:', error);
+      }
+    };
+
+    initLiff();
+  }, []);
+
+  // Apply pixel cursor to body element
+  useEffect(() => {
+    document.body.classList.add('pixel-cursor');
+    return () => {
+      document.body.classList.remove('pixel-cursor');
+    };
+  }, []);
+
+  useEffect(() => {
+    // Handle OAuth callback first
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const error = urlParams.get('error');
+    
+    if (error) {
+      console.error('Authentication error:', error);
+      alert('Authentication failed. Please try again.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setLoading(false);
+      return;
+    }
+    
+    if (token) {
+      console.log('Token received from OAuth callback');
+      apiService.setToken(token);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Don't check auth status immediately, let it set the token first
+      setTimeout(() => {
+        checkAuthStatus();
+      }, 100);
+    } else {
+      // No token in URL, check if we have one stored
+      console.log('No token in URL, checking stored token...');
+      checkAuthStatus();
+    }
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const storedToken = localStorage.getItem('authToken');
+      console.log('Checking auth status, stored token:', storedToken ? 'exists' : 'not found');
+      
+      const response = await apiService.verifyToken();
+      console.log('Auth verification response:', response);
+      
+      if (response.data?.valid && response.data.user) {
+        const userData = response.data.user;
+        console.log('User authenticated:', userData.email);
+        
+        // Try to resolve selected folder name if folder ID exists
+        let resolvedFolderName: string | undefined = undefined;
+        if (userData.google_drive_folder_id) {
+          try {
+            const foldersRes = await apiService.getFolders();
+            const folders = foldersRes.data?.folders || [];
+            const match = folders.find((f: any) => f.id === userData.google_drive_folder_id);
+            resolvedFolderName = match?.name || 'Selected';
+          } catch (e) {
+            console.warn('Failed to fetch folder list to resolve name:', e);
+            resolvedFolderName = 'Selected';
+          }
+        }
+
+        setUser({
+          email: userData.email,
+          name: userData.name,
+          googleConnected: true,
+          lineConnected: !!userData.line_user_id,
+          selectedFolder: resolvedFolderName,
+          selectedFolderId: userData.google_drive_folder_id,
+        });
+        // Navigate based on user state
+        // Only navigate to folder selection or dashboard if we have valid auth
+        if (!userData.google_drive_folder_id) {
+          console.log('No folder selected, navigating to folder selection');
+          setCurrentPage('folder-selection');
+        } else {
+          console.log('Folder already selected, navigating to dashboard');
+          setCurrentPage('dashboard');
+        }
+      } else {
+        // Invalid token, clear it
+        console.log('Invalid token or no user data, clearing token');
+        apiService.clearToken();
+        setCurrentPage('landing');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setCurrentPage('landing');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const navigate = (page: Page) => {
+    setCurrentPage(page);
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      // Use LINE user ID from LIFF if available
+      const userId = lineUserId || new URLSearchParams(window.location.search).get('line_user_id');
+
+      const response = await apiService.getGoogleAuthUrl(userId || undefined);
+      if (response.data?.authUrl) {
+        // Check if running in LIFF (LINE app)
+        try {
+          if (liff.isInClient()) {
+            // Open Google OAuth in external browser to avoid disallowed_useragent error
+            console.log('Opening Google OAuth in external browser');
+            liff.openWindow({
+              url: response.data.authUrl,
+              external: true
+            });
+          } else {
+            // Normal browser - just redirect
+            window.location.href = response.data.authUrl;
+          }
+        } catch (liffError) {
+          // LIFF not initialized or not in LINE - use normal redirect
+          console.log('Not in LIFF context, using normal redirect');
+          window.location.href = response.data.authUrl;
+        }
+      } else {
+        console.error('Failed to get auth URL:', response.error);
+        alert('Failed to initiate Google login. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error during Google login:', error);
+      alert('An error occurred. Please check your connection and try again.');
+    }
+  };
+
+  const handleFolderSelection = async (folderId: string, folderName: string) => {
+    if (user) {
+      const response = await apiService.setFolder(folderId);
+      if (!response.error) {
+        setUser({ ...user, selectedFolder: folderName, selectedFolderId: folderId });
+        navigate('dashboard');
+      } else {
+        console.error('Failed to set folder:', response.error);
+      }
+    }
+  };
+
+  const handleLineConnect = async () => {
+    try {
+      let userId = lineUserId;
+
+      // Try to refresh LIFF profile if we don't have it yet
+      if (!userId && typeof liff !== 'undefined') {
+        try {
+          if (!liff.isLoggedIn()) {
+            liff.login({ redirectUri: window.location.href });
+            return; // Redirecting for login
+          }
+          const profile = await liff.getProfile();
+          userId = profile.userId;
+          setLineUserId(profile.userId);
+        } catch (liffError) {
+          console.warn('Unable to fetch LINE profile via LIFF:', liffError);
+        }
+      }
+
+      // Manual fallback prompt if LIFF ID is still unavailable
+      if (!userId) {
+        const manualId = window.prompt(
+          'Enter your LINE User ID (found under Settings > Profile > User ID). This will link uploads to your account.'
+        );
+        if (manualId) {
+          userId = manualId.trim();
+        }
+      }
+
+      if (!userId) {
+        alert('LINE User ID is required to complete the connection.');
+        return;
+      }
+
+      const response = await apiService.bindLine(userId);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      if (user) {
+        setUser({ ...user, lineConnected: true });
+      }
+
+      alert('LINE account connected! You can now send photos to the bot.');
+    } catch (error) {
+      console.error('Error connecting LINE account:', error);
+      alert('Failed to connect LINE account. Please try again or verify your LINE ID.');
+    }
+  };
+
+  const handleLogout = () => {
+    apiService.clearToken();
+    setUser(null);
+    setCurrentPage('landing');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-2xl">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      {currentPage === 'landing' && (
+        <LandingPage onGoogleLogin={handleGoogleLogin} />
+      )}
+      {currentPage === 'folder-selection' && user && (
+        <FolderSelection
+          onFolderSelect={handleFolderSelection}
+          onBack={() => navigate('landing')}
+        />
+      )}
+      {currentPage === 'dashboard' && user && (
+        <Dashboard
+          user={user}
+          onNavigate={navigate}
+          onLineConnect={handleLineConnect}
+          onLogout={handleLogout}
+        />
+      )}
+      {currentPage === 'billing' && (
+        <BillingPage onBack={() => navigate('dashboard')} />
+      )}
+      {currentPage === 'settings' && user && (
+        <SettingsPage
+          user={user}
+          onBack={() => navigate('dashboard')}
+          onFolderChange={() => navigate('folder-selection')}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,22 @@
+{
+  "name": "pixcelbob-main",
+  "version": "1.0.0",
+  "description": "Automatically backup photos from LINE to Google Drive with a simple chat interface.",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@line/bot-sdk": "^10.6.0",
+    "dotenv": "^17.2.4",
+    "googleapis": "^171.4.0",
+    "pg": "^8.18.0"
+  }
+}

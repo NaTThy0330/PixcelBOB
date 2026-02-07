@@ -1,0 +1,22 @@
+{
+  "name": "pixcelbob-upload-worker",
+  "version": "1.0.0",
+  "description": "Background worker for processing queued LINE uploads to Google Drive",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^7.5.2",
+    "dotenv": "^16.4.5",
+    "googleapis": "^118.0.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

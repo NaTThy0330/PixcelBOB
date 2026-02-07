@@ -1,0 +1,28 @@
+# Node
+node_modules/
+*.log
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.temp
+
+# Sensitive files
+*.pem
+*.key
+*.cert
+\n+# Local nested repo copy (ignore if re-added)
+PixcelBOB/
+Pixel Art Background/
+*.tgz
